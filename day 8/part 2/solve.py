@@ -52,4 +52,4 @@ class Image:
 
 
 img = Image(SZ, data)
-print(img.solve())
+img.display()
