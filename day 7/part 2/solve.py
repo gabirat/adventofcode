@@ -1,4 +1,7 @@
-with open("input.txt", "r") as file:
+import threading
+import time
+
+with open("C:\\Users\\gabirat\\Desktop\\Python\\adventofcode\\day 7\\part 2\\input.txt", "r") as file:
     data = [int(val) for val in file.read().split(",")]
 
 class IntPC:
@@ -19,8 +22,6 @@ class IntPC:
             99: ("halt", 0)
         }
         self.parameter_modes = [] # 0 - arg1, 1 - arg2, 2 - arg3
-        self.output_buffer = []
-        self.input_buffer = []
 
     def add(self):
         self.mem[self.registers[2]] = self.mem[self.registers[0]] + self.mem[self.registers[1]]
@@ -30,14 +31,18 @@ class IntPC:
         self.mem[self.registers[2]] = self.mem[self.registers[0]] * self.mem[self.registers[1]]
         self.pc += 4
 
+    def inp_wrapper(self):
+        return int(input())
+
     def inp(self):
-        self.mem[self.registers[0]] = self.input_buffer[0] #int(input())
-        self.input_buffer.remove(self.input_buffer[0])
+        self.mem[self.registers[0]] = self.inp_wrapper()
         self.pc += 2
 
+    def out_wrapper(self, val):
+        print(val)
+
     def out(self):
-        #print(self.mem[self.registers[0]])
-        self.output_buffer.append(self.mem[self.registers[0]])
+        self.out_wrapper(self.mem[self.registers[0]])
         self.pc += 2
     
     def jnz(self):
@@ -87,14 +92,39 @@ class IntPC:
             op()
         #return self.mem
 
-class Amplifier(IntPC):
-    def __init__(self, program, inp, phase):
-        super(program)
-        self.inp = inp
+class Amplifier(IntPC, threading.Thread):
+    def __init__(self, program, phase, dev_out, name):
+        IntPC.__init__(self, program)
+        threading.Thread.__init__(self)
+        self.in_val = None
+        self.out_val = None
         self.phase = phase
+        #self.dev_in = dev_in
+        self.dev_out = dev_out
+        self.config_mode = True
+        self.name = name
+
+    def inp_wrapper(self):
+        if self.config_mode == True:
+            self.config_mode = False
+            return self.phase
+        while self.in_val is None:
+            time.sleep(0.0001)
+        return self.in_val
+
+    def out_wrapper(self, val):
+        #print(self.name, ": ", val)
+        self.in_val = None
+        self.out_val = val
+        if not self.dev_out.halted:
+            self.dev_out.feed(val)
+        
+
+    def feed(self, val):
+        self.in_val = val
 
 max_thrust = 0
-possibilitises = [0,1,2,3,4]
+possibilitises = [5,6,7,8,9]
 
 for i in possibilitises:
     a = possibilitises.copy()
@@ -109,17 +139,15 @@ for i in possibilitises:
                 d = c.copy()
                 d.remove(l)
                 for m in d:
-                    amps = [IntPC(data) for a in range(5)]
-                    amps[0].input_buffer = [i,0]
-                    amps[0].run()
-                    amps[1].input_buffer = [j, amps[0].output_buffer[0]]
-                    amps[1].run()
-                    amps[2].input_buffer = [k, amps[1].output_buffer[0]]
-                    amps[2].run()
-                    amps[3].input_buffer = [l, amps[2].output_buffer[0]]
-                    amps[3].run()
-                    amps[4].input_buffer = [m, amps[3].output_buffer[0]]
-                    amps[4].run()
-                    max_thrust = amps[4].output_buffer[0] if amps[4].output_buffer[0] > max_thrust else max_thrust
+                    bruteforcer = [i,j,k,l,m]
+                    #print(bruteforcer)
+                    amps =  [Amplifier(data, bruteforcer[n], None, "Amp id#%i" % n) for n in range(5)]
+                    amps[0].in_val = 0
+                    for na in range(5):
+                        amps[na].dev_out = amps[(na + 1) % 5]
+                    for na in range(5):
+                        amps[na].start()
+                    amps[-1].join()
+                    max_thrust = amps[-1].out_val if amps[-1].out_val > max_thrust else max_thrust
 
 print(max_thrust)
