@@ -1,6 +1,6 @@
 import json
 
-with open("C:\\Users\\gabirat\\Desktop\\Python\\adventofcode\\day 10\\part 1\\test_input.txt", "r") as file:
+with open("C:\\Users\\gabirat\\Desktop\\Python\\adventofcode\\day 10\\part 1\\input.txt", "r") as file:
     data = [val for val in file.read().split("\n")]
 
 
@@ -26,7 +26,8 @@ class Line:
         if self.vertical:
             return p1.x == self.x
         else:
-            return self.get_y(p1.x) == p1.y
+            tolerance = 0.001
+            return abs(self.get_y(p1.x) - p1.y) < tolerance
 
     @staticmethod
     def from_points(p1, p2):
